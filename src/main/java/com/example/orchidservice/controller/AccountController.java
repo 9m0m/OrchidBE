@@ -1,56 +1,70 @@
 package com.example.orchidservice.controller;
 
+import com.example.orchidservice.dto.AccountDTO;
+import com.example.orchidservice.dto.ApiResponse;
+import com.example.orchidservice.dto.LoginRequestDTO;
+import com.example.orchidservice.dto.LoginResponseDTO;
+import com.example.orchidservice.dto.RegisterRequestDTO;
+import com.example.orchidservice.dto.RegisterResponseDTO;
 import com.example.orchidservice.pojo.Account;
 import com.example.orchidservice.service.imp.IAccountService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
+
+import javax.validation.Valid;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/accounts")
+@RequiredArgsConstructor
 public class AccountController {
+    private final IAccountService accountService;
 
-    @Autowired
-    private IAccountService accountService;
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<RegisterResponseDTO>> register(@Valid @RequestBody RegisterRequestDTO request) {
+        RegisterResponseDTO response = accountService.register(request);
+        return ResponseEntity.ok(ApiResponse.<RegisterResponseDTO>builder()
+            .code(1000)
+            .message("Registration successful")
+            .result(response)
+            .build());
+    }
 
-    @GetMapping
-    public ResponseEntity<List<Account>> getAllAccounts() {
-        return ResponseEntity.ok(accountService.getAllAccounts());
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<LoginResponseDTO>> login(@Valid @RequestBody LoginRequestDTO request) {
+        LoginResponseDTO response = accountService.login(request);
+        return ResponseEntity.ok(ApiResponse.<LoginResponseDTO>builder()
+            .code(1000)
+            .message("Login successful")
+            .result(response)
+            .build());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Account> getAccountById(@PathVariable Integer id) {
-        Optional<Account> account = accountService.getAccountById(id);
-        return account.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
+    public ResponseEntity<ApiResponse<AccountDTO>> getAccount(@PathVariable Integer id) {
+        Optional<Account> accountOpt = accountService.getAccountById(id);
+        if (accountOpt.isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.<AccountDTO>builder()
+                    .code(1004)
+                    .message("Account not found")
+                    .build());
+        }
 
-    @PostMapping
-    public ResponseEntity<Account> createAccount(@RequestBody Account account) {
-        return ResponseEntity.ok(accountService.saveAccount(account));
-    }
+        Account account = accountOpt.get();
+        AccountDTO accountDTO = AccountDTO.builder()
+            .accountId(account.getAccountId())
+            .accountName(account.getAccountName())
+            .email(account.getEmail())
+            .roleId(account.getRole().getRoleId())
+            .roleName(account.getRole().getRoleName())
+            .build();
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Account> updateAccount(@PathVariable Integer id, @RequestBody Account account) {
-        account.setAccountId(id);
-        return ResponseEntity.ok(accountService.saveAccount(account));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAccount(@PathVariable Integer id) {
-        accountService.deleteAccount(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/email/{email}")
-    public ResponseEntity<Account> getAccountByEmail(@PathVariable String email) {
-        Optional<Account> account = accountService.getAccountByEmail(email);
-        return account.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/role/{roleId}")
-    public ResponseEntity<List<Account>> getAccountsByRole(@PathVariable Integer roleId) {
-        return ResponseEntity.ok(accountService.getAccountsByRoleId(roleId));
+        return ResponseEntity.ok(ApiResponse.<AccountDTO>builder()
+            .code(1000)
+            .message("Account retrieved successfully")
+            .result(accountDTO)
+            .build());
     }
 }

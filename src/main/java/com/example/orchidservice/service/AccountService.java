@@ -1,18 +1,31 @@
 package com.example.orchidservice.service;
 
+import com.example.orchidservice.dto.LoginRequestDTO;
+import com.example.orchidservice.dto.LoginResponseDTO;
+import com.example.orchidservice.dto.RegisterRequestDTO;
+import com.example.orchidservice.dto.RegisterResponseDTO;
 import com.example.orchidservice.pojo.Account;
+import com.example.orchidservice.pojo.Role;
 import com.example.orchidservice.repository.AccountRepository;
+import com.example.orchidservice.repository.RoleRepository;
 import com.example.orchidservice.service.imp.IAccountService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class AccountService implements IAccountService {
 
-    @Autowired
-    private AccountRepository accountRepository;
+    private final AccountRepository accountRepository;
+
+    private final RoleRepository roleRepository;
 
     @Override
     public List<Account> getAllAccounts() {
@@ -25,11 +38,13 @@ public class AccountService implements IAccountService {
     }
 
     @Override
+    @Transactional
     public Account saveAccount(Account account) {
         return accountRepository.save(account);
     }
 
     @Override
+    @Transactional
     public void deleteAccount(Integer id) {
         accountRepository.deleteById(id);
     }
@@ -41,6 +56,57 @@ public class AccountService implements IAccountService {
 
     @Override
     public List<Account> getAccountsByRoleId(Integer roleId) {
-        return accountRepository.findByRoleId(roleId);
+        return accountRepository.findByRoleRoleId(roleId);
+    }
+
+    @Override
+    @Transactional
+    public RegisterResponseDTO register(RegisterRequestDTO request) {
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match");
+        }
+
+        if (accountRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
+        }
+
+        // Always get role with ID 3 (User)
+        Role defaultRole = roleRepository.findById(3)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Default user role not found"));
+
+        Account newAccount = new Account();
+        newAccount.setAccountName(request.getAccountName());
+        newAccount.setEmail(request.getEmail());
+        newAccount.setPassword(request.getPassword());
+        newAccount.setRole(defaultRole);  // Set default role
+
+        Account savedAccount = accountRepository.save(newAccount);
+
+        return RegisterResponseDTO.builder()
+                .accountId(savedAccount.getAccountId())
+                .accountName(savedAccount.getAccountName())
+                .email(savedAccount.getEmail())
+                .roleId(savedAccount.getRole().getRoleId())
+                .build();
+    }
+
+    @Override
+    public LoginResponseDTO login(LoginRequestDTO request) {
+        Account account = accountRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email or password"));
+
+        if (!request.getPassword().equals(account.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email or password");
+        }
+
+        return LoginResponseDTO.builder()
+                .accountId(account.getAccountId())
+                .accountName(account.getAccountName())
+                .email(account.getEmail())
+                .roleId(account.getRole().getRoleId())
+                .roleName(account.getRole().getRoleName())
+                .success(true)
+                .message("Login successful")
+                .build();
     }
 }

@@ -14,29 +14,4 @@ public class RoleService implements IRoleService {
 
     @Autowired
     private RoleRepository roleRepository;
-
-    @Override
-    public List<Role> getAllRoles() {
-        return roleRepository.findAll();
-    }
-
-    @Override
-    public Optional<Role> getRoleById(Integer id) {
-        return roleRepository.findById(id);
-    }
-
-    @Override
-    public Role saveRole(Role role) {
-        return roleRepository.save(role);
-    }
-
-    @Override
-    public void deleteRole(Integer id) {
-        roleRepository.deleteById(id);
-    }
-
-    @Override
-    public Optional<Role> getRoleByName(String roleName) {
-        return roleRepository.findByRoleName(roleName);
-    }
 }
