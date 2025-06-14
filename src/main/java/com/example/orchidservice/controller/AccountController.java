@@ -10,6 +10,7 @@ import com.example.orchidservice.pojo.Account;
 import com.example.orchidservice.service.imp.IAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -41,6 +42,7 @@ public class AccountController {
             .build());
     }
 
+    @PreAuthorize("hasRole('SuperAdmin') or hasRole('Admin') or (hasRole('User') and #id == authentication.principal.accountId)")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AccountDTO>> getAccount(@PathVariable Integer id) {
         Optional<Account> accountOpt = accountService.getAccountById(id);

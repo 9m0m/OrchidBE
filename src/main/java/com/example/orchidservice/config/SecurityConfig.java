@@ -40,7 +40,8 @@ public class SecurityConfig {
                         "/swagger-resources/**",
                         "/webjars/**"
                 ).permitAll()
-                .requestMatchers("/api/accounts/**").hasAnyRole("SuperAdmin", "Admin")
+                .requestMatchers("/api/accounts/register", "/api/accounts/login").permitAll()
+                .requestMatchers("/api/accounts/**").hasAnyRole("SuperAdmin", "Admin", "User")
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement()

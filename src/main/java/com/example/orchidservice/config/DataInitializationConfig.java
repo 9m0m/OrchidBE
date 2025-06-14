@@ -20,41 +20,39 @@ public class DataInitializationConfig {
     CommandLineRunner initDatabase(RoleRepository roleRepository, AccountRepository accountRepository) {
         return args -> {
             // Create SuperAdmin role if not exists
-            Role superAdmin = null;
-            if (roleRepository.findById(1).isEmpty()) {
-                superAdmin = new Role();
-                superAdmin.setRoleId(1);
-                superAdmin.setRoleName("SuperAdmin");
-                superAdmin = roleRepository.save(superAdmin);
-            } else {
-                superAdmin = roleRepository.findById(1).get();
-            }
+            Role superAdmin = roleRepository.findById(1)
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setRoleName("SuperAdmin");
+                        return roleRepository.saveAndFlush(role);
+                    });
 
             // Create Admin role if not exists
-            if (roleRepository.findById(2).isEmpty()) {
-                Role admin = new Role();
-                admin.setRoleId(2);
-                admin.setRoleName("Admin");
-                roleRepository.save(admin);
-            }
+            roleRepository.findById(2)
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setRoleName("Admin");
+                        return roleRepository.saveAndFlush(role);
+                    });
 
             // Create User role if not exists
-            if (roleRepository.findById(3).isEmpty()) {
-                Role user = new Role();
-                user.setRoleId(3);
-                user.setRoleName("User");
-                roleRepository.save(user);
-            }
+            roleRepository.findById(3)
+                    .orElseGet(() -> {
+                        Role role = new Role();
+                        role.setRoleName("User");
+                        return roleRepository.saveAndFlush(role);
+                    });
 
             // Create default SuperAdmin account if not exists
-            if (accountRepository.findByEmail("superadmin@gmail.com").isEmpty()) {
-                Account defaultAdmin = new Account();
-                defaultAdmin.setEmail("superadmin@gmail.com");
-                defaultAdmin.setPassword(passwordEncoder.encode("123456"));
-                defaultAdmin.setAccountName("SuperAdmin");
-                defaultAdmin.setRole(superAdmin);
-                accountRepository.save(defaultAdmin);
-            }
+            accountRepository.findByEmail("superadmin@gmail.com")
+                    .orElseGet(() -> {
+                        Account defaultAdmin = new Account();
+                        defaultAdmin.setEmail("superadmin@gmail.com");
+                        defaultAdmin.setPassword(passwordEncoder.encode("123456"));
+                        defaultAdmin.setAccountName("SuperAdmin");
+                        defaultAdmin.setRole(superAdmin);
+                        return accountRepository.save(defaultAdmin);
+                    });
         };
     }
 }
