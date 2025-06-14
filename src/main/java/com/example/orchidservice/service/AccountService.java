@@ -11,6 +11,7 @@ import com.example.orchidservice.repository.RoleRepository;
 import com.example.orchidservice.service.imp.IAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,8 +25,9 @@ import java.util.Optional;
 public class AccountService implements IAccountService {
 
     private final AccountRepository accountRepository;
-
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Override
     public List<Account> getAllAccounts() {
@@ -40,12 +42,18 @@ public class AccountService implements IAccountService {
     @Override
     @Transactional
     public Account saveAccount(Account account) {
+        if (account.getPassword() != null) {
+            account.setPassword(passwordEncoder.encode(account.getPassword()));
+        }
         return accountRepository.save(account);
     }
 
     @Override
     @Transactional
     public void deleteAccount(Integer id) {
+        if (!accountRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found");
+        }
         accountRepository.deleteById(id);
     }
 
@@ -70,15 +78,14 @@ public class AccountService implements IAccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email already exists");
         }
 
-        // Always get role with ID 3 (User)
         Role defaultRole = roleRepository.findById(3)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Default user role not found"));
 
         Account newAccount = new Account();
         newAccount.setAccountName(request.getAccountName());
         newAccount.setEmail(request.getEmail());
-        newAccount.setPassword(request.getPassword());
-        newAccount.setRole(defaultRole);  // Set default role
+        newAccount.setPassword(passwordEncoder.encode(request.getPassword()));
+        newAccount.setRole(defaultRole);
 
         Account savedAccount = accountRepository.save(newAccount);
 
@@ -95,9 +102,11 @@ public class AccountService implements IAccountService {
         Account account = accountRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email or password"));
 
-        if (!request.getPassword().equals(account.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), account.getPassword())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email or password");
         }
+
+        String token = jwtService.generateToken(account);
 
         return LoginResponseDTO.builder()
                 .accountId(account.getAccountId())
@@ -107,6 +116,7 @@ public class AccountService implements IAccountService {
                 .roleName(account.getRole().getRoleName())
                 .success(true)
                 .message("Login successful")
+                .token(token)
                 .build();
     }
 }
