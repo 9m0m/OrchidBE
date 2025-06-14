@@ -18,4 +18,5 @@ public interface IAccountService {
     List<Account> getAccountsByRoleId(Integer roleId);
     RegisterResponseDTO register(RegisterRequestDTO request);
     LoginResponseDTO login(LoginRequestDTO request);
+    void logout(String token);
 }

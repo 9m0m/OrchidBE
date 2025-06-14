@@ -119,4 +119,12 @@ public class AccountService implements IAccountService {
                 .token(token)
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void logout(String token) {
+        if (token != null) {
+            jwtService.invalidateToken(token);
+        }
+    }
 }

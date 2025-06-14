@@ -12,11 +12,15 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
     private static final String SECRET_KEY = "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970";
+
+    private final Set<String> invalidatedTokens = ConcurrentHashMap.newKeySet();
 
     public String extractEmail(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -28,9 +32,21 @@ public class JwtService {
         return createToken(claims, account.getEmail());
     }
 
+    public List<GrantedAuthority> getAuthorities(String token) {
+        Claims claims = extractAllClaims(token);
+        String role = claims.get("role", String.class);
+        // Add ROLE_ prefix when creating the authority
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
+    }
+
+    public void invalidateToken(String token) {
+        invalidatedTokens.add(token);
+    }
+
     public boolean isTokenValid(String token, Account account) {
-        final String email = extractEmail(token);
-        return (email.equals(account.getEmail())) && !isTokenExpired(token);
+        return !invalidatedTokens.contains(token)
+                && extractEmail(token).equals(account.getEmail())
+                && !isTokenExpired(token);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

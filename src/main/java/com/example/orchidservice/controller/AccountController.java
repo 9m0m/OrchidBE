@@ -17,7 +17,7 @@ import javax.validation.Valid;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/accounts")
+@RequestMapping("/accounts")
 @RequiredArgsConstructor
 public class AccountController {
     private final IAccountService accountService;
@@ -43,7 +43,7 @@ public class AccountController {
     }
 
     @PreAuthorize("hasRole('SuperAdmin') or hasRole('Admin') or (hasRole('User') and #id == authentication.principal.accountId)")
-    @GetMapping("/{id}")
+    @GetMapping("/profile/{id}")
     public ResponseEntity<ApiResponse<AccountDTO>> getAccount(@PathVariable Integer id) {
         Optional<Account> accountOpt = accountService.getAccountById(id);
         if (accountOpt.isEmpty()) {
@@ -68,5 +68,19 @@ public class AccountController {
             .message("Account retrieved successfully")
             .result(accountDTO)
             .build());
+    }
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader("Authorization") String authHeader) {
+        String token = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        }
+
+        accountService.logout(token);
+
+        return ResponseEntity.ok(ApiResponse.<Void>builder()
+                .code(1000)
+                .message("Logged out successfully")
+                .build());
     }
 }

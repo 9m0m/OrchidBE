@@ -31,8 +31,9 @@ public class SecurityConfig {
                 .cors().and()
                 .authorizeHttpRequests()
                 .requestMatchers(
-                    "/api/accounts/register",
-                    "/api/accounts/login",
+                    "/accounts/register",
+                    "/accounts/login",
+                        "/accounts/logout",
                         "/v3/api-docs/**",   // Default SpringDoc path
                         "/api-docs/**",      // Your custom path
                         "/swagger-ui.html",
@@ -40,8 +41,8 @@ public class SecurityConfig {
                         "/swagger-resources/**",
                         "/webjars/**"
                 ).permitAll()
-                .requestMatchers("/api/accounts/register", "/api/accounts/login").permitAll()
-                .requestMatchers("/api/accounts/**").hasAnyRole("SuperAdmin", "Admin", "User")
+                .requestMatchers("/accounts/register", "/accounts/login").permitAll()
+                .requestMatchers("/accounts/**").hasAnyRole("SuperAdmin", "Admin", "User")
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement()
