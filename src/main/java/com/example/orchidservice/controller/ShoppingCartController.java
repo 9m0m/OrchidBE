@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpSession;
 
 @RestController
 @RequestMapping("/api/cart")
-@CrossOrigin(origins = "*")
 public class ShoppingCartController {
 
     @Autowired
@@ -17,9 +16,16 @@ public class ShoppingCartController {
 
     @GetMapping
     public ResponseEntity<ShoppingCartDTO> getCart(HttpSession session) {
-        String sessionId = session.getId();
-        ShoppingCartDTO cart = shoppingCartService.getCart(sessionId);
-        return ResponseEntity.ok(cart);
+        try {
+            String sessionId = session.getId();
+            ShoppingCartDTO cart = shoppingCartService.getCart(sessionId);
+            if (cart.getItems() == null || cart.getItems().isEmpty()) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(cart);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PostMapping("/add")
@@ -27,8 +33,12 @@ public class ShoppingCartController {
             @RequestParam Integer orchidId,
             @RequestParam Integer quantity,
             HttpSession session) {
-        String sessionId = session.getId();
         try {
+            if (quantity <= 0) {
+                return ResponseEntity.badRequest().build();
+            }
+            String sessionId = session.getId();
+            session.setMaxInactiveInterval(3600); // Set session timeout to 1 hour
             ShoppingCartDTO cart = shoppingCartService.addToCart(sessionId, orchidId, quantity);
             return ResponseEntity.ok(cart);
         } catch (RuntimeException e) {

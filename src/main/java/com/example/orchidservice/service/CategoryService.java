@@ -32,7 +32,8 @@ public class CategoryService implements ICategoryService {
 
     @Override
     public CategoryDTO saveCategory(CategoryDTO categoryDTO) {
-        Category category = convertToEntity(categoryDTO);
+        Category category = new Category();
+        category.setCategoryName(categoryDTO.getCategoryName());
         Category saved = categoryRepository.save(category);
         return convertToDTO(saved);
     }
@@ -64,25 +65,6 @@ public class CategoryService implements ICategoryService {
         CategoryDTO dto = new CategoryDTO();
         dto.setCategoryId(category.getCategoryId());
         dto.setCategoryName(category.getCategoryName());
-
-        if (category.getOrchids() != null) {
-            List<OrchidDTO> orchidDTOs = category.getOrchids().stream()
-                    .map(orchid -> {
-                        OrchidDTO orchidDTO = new OrchidDTO();
-                        orchidDTO.setOrchidId(orchid.getOrchidId());
-                        orchidDTO.setOrchidName(orchid.getOrchidName());
-                        orchidDTO.setOrchidDescription(orchid.getOrchidDescription());
-                        orchidDTO.setPrice(orchid.getPrice());
-                        orchidDTO.setOrchidUrl(orchid.getOrchidUrl());
-                        orchidDTO.setIsNatural(orchid.getIsNatural());
-                        orchidDTO.setCategoryId(category.getCategoryId());
-                        orchidDTO.setCategoryName(category.getCategoryName());
-                        return orchidDTO;
-                    })
-                    .collect(Collectors.toList());
-            dto.setOrchids(orchidDTOs);
-        }
-
         return dto;
     }
 
@@ -90,6 +72,7 @@ public class CategoryService implements ICategoryService {
         Category category = new Category();
         category.setCategoryId(dto.getCategoryId());
         category.setCategoryName(dto.getCategoryName());
+        // Don't set orchids during creation
         return category;
     }
 }

@@ -15,6 +15,12 @@ public class OrchidController {
     @Autowired
     private IOrchidService orchidService;
 
+    @GetMapping("/orchids")
+    public ResponseEntity<List<OrchidDTO>> getAllOrchids() {
+        List<OrchidDTO> orchids = orchidService.getAllOrchids();
+        return ResponseEntity.ok(orchids);
+    }
+
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<OrchidDTO>> getOrchidsByCategory(@PathVariable Integer categoryId) {
         List<OrchidDTO> orchids = orchidService.getOrchidsByCategory(categoryId);

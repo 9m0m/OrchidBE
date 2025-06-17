@@ -21,7 +21,10 @@ public class ShoppingCartService implements IShoppingCartService {
 
     @Override
     public ShoppingCartDTO getCart(String sessionId) {
-        Map<Integer, CartItemDTO> cart = carts.getOrDefault(sessionId, new HashMap<>());
+        Map<Integer, CartItemDTO> cart = carts.get(sessionId);
+        if (cart == null || cart.isEmpty()) {
+            return new ShoppingCartDTO(new ArrayList<>(), 0.0, 0);
+        }
         return buildCartDTO(cart);
     }
 
@@ -43,9 +46,11 @@ public class ShoppingCartService implements IShoppingCartService {
             newItem.setPrice(orchid.getPrice());
             newItem.setQuantity(quantity);
             newItem.setSubtotal(orchid.getPrice() * quantity);
+            newItem.setOrchidUrl(orchid.getOrchidUrl());
             cart.put(orchidId, newItem);
         }
 
+        carts.put(sessionId, cart);
         return buildCartDTO(cart);
     }
 
@@ -79,6 +84,10 @@ public class ShoppingCartService implements IShoppingCartService {
     }
 
     private ShoppingCartDTO buildCartDTO(Map<Integer, CartItemDTO> cart) {
+        if (cart == null || cart.isEmpty()) {
+            return new ShoppingCartDTO(new ArrayList<>(), 0.0, 0);
+        }
+
         List<CartItemDTO> items = new ArrayList<>(cart.values());
         Double totalAmount = items.stream()
                 .mapToDouble(CartItemDTO::getSubtotal)

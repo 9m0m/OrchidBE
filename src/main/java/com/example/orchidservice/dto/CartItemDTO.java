@@ -13,4 +13,5 @@ public class CartItemDTO {
     private Double price;
     private Integer quantity;
     private Double subtotal;
+    private String orchidUrl;
 }

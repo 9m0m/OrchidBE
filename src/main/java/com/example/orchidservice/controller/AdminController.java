@@ -55,8 +55,12 @@ public class AdminController {
 
     @PostMapping("/categories")
     public ResponseEntity<CategoryDTO> createCategory(@RequestBody CategoryDTO categoryDTO) {
-        CategoryDTO created = categoryService.saveCategory(categoryDTO);
-        return ResponseEntity.ok(created);
+        try {
+            CategoryDTO created = categoryService.saveCategory(categoryDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/categories/{id}")
@@ -91,8 +95,12 @@ public class AdminController {
 
     @PostMapping("/orchids")
     public ResponseEntity<OrchidDTO> createOrchid(@RequestBody OrchidDTO orchidDTO) {
-        OrchidDTO created = orchidService.saveOrchid(orchidDTO);
-        return ResponseEntity.ok(created);
+        try {
+            OrchidDTO created = orchidService.saveOrchid(orchidDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @PutMapping("/orchids/{id}")

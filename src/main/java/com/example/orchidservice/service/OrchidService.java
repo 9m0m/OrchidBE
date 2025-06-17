@@ -36,7 +36,24 @@ public class OrchidService implements IOrchidService {
 
     @Override
     public OrchidDTO saveOrchid(OrchidDTO orchidDTO) {
-        Orchid orchid = convertToEntity(orchidDTO);
+        Orchid orchid = new Orchid();
+        orchid.setOrchidName(orchidDTO.getOrchidName());
+        orchid.setOrchidDescription(orchidDTO.getOrchidDescription());
+        orchid.setPrice(orchidDTO.getPrice());
+        orchid.setOrchidUrl(orchidDTO.getOrchidUrl());
+        orchid.setIsNatural(orchidDTO.getIsNatural());
+
+        if (orchidDTO.getCategoryId() != null) {
+            Category category = categoryRepository.findById(orchidDTO.getCategoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + orchidDTO.getCategoryId()));
+            orchid.setCategory(category);
+            // Set category name in DTO
+            orchidDTO.setCategoryName(category.getCategoryName());
+        }
+
+        // Don't set ID for new entity
+        orchid.setOrchidId(null);
+
         Orchid saved = orchidRepository.save(orchid);
         return convertToDTO(saved);
     }
@@ -105,10 +122,13 @@ public class OrchidService implements IOrchidService {
         dto.setPrice(orchid.getPrice());
         dto.setOrchidUrl(orchid.getOrchidUrl());
         dto.setIsNatural(orchid.getIsNatural());
+
+        // Safely handle category
         if (orchid.getCategory() != null) {
             dto.setCategoryId(orchid.getCategory().getCategoryId());
             dto.setCategoryName(orchid.getCategory().getCategoryName());
         }
+
         return dto;
     }
 

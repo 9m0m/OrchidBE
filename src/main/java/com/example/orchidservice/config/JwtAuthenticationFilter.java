@@ -5,7 +5,7 @@ import com.example.orchidservice.repository.AccountRepository;
 import com.example.orchidservice.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,42 +37,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        final String authorizationHeader = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
 
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            String jwt = authorizationHeader.substring(7);
+            String jwt = authHeader.substring(7);
             String email = jwtService.extractEmail(jwt);
 
+            log.debug("Processing request for email: {}", email);
+
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                Optional<Account> accountOptional = accountRepository.findByEmail(email);
+                Optional<Account> accountOpt = accountRepository.findByEmailWithRole(email);
 
-                if (accountOptional.isPresent() && jwtService.isTokenValid(jwt, accountOptional.get())) {
-                    Account account = accountOptional.get();
+                if (accountOpt.isPresent()) {
+                    Account account = accountOpt.get();
 
-                    // Add debug logging
-                    log.debug("Processing authentication for user: {}", email);
-                    log.debug("User role from database: {}", account.getRole().getRoleName());
+                    if (jwtService.isTokenValid(jwt, account)) {
+                        List<GrantedAuthority> authorities = jwtService.getAuthorities(jwt);
 
-                    // Create authority with ROLE_ prefix
-                    String roleWithPrefix = "ROLE_" + account.getRole().getRoleName().toUpperCase();
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(roleWithPrefix);
+                        log.debug("User: {}, Authorities: {}", email, authorities);
 
-                    log.debug("Created authority: {}", authority.getAuthority());
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                account,
+                                null,
+                                authorities
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
 
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            account,
-                            null,
-                            Collections.singletonList(authority)
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-
-                    log.debug("Set authentication with authorities: {}", authToken.getAuthorities());
+                        log.debug("Authentication successful for user: {}", email);
+                    } else {
+                        log.warn("Invalid token for user: {}", email);
+                    }
+                } else {
+                    log.warn("User not found: {}", email);
                 }
             }
         } catch (Exception e) {
