@@ -6,13 +6,12 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -28,15 +27,15 @@ public class JwtService {
 
     public String generateToken(Account account) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", account.getRole().getRoleName());
+        String role = account.getRole().getRoleName().toUpperCase(); // Convert role to uppercase
+        claims.put("role", role);
         return createToken(claims, account.getEmail());
     }
 
     public List<GrantedAuthority> getAuthorities(String token) {
         Claims claims = extractAllClaims(token);
         String role = claims.get("role", String.class);
-        // Add ROLE_ prefix when creating the authority
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role));
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
     }
 
     public void invalidateToken(String token) {
@@ -52,6 +51,9 @@ public class JwtService {
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
+    }
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
     private String createToken(Map<String, Object> claims, String subject) {

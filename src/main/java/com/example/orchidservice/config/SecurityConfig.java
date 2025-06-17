@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -12,13 +13,20 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Autowired
@@ -31,26 +39,58 @@ public class SecurityConfig {
                 .cors().and()
                 .authorizeHttpRequests()
                 .requestMatchers(
-                    "/accounts/register",
-                    "/accounts/login",
+                        "/accounts/register",
+                        "/accounts/login",
                         "/accounts/logout",
-                        "/v3/api-docs/**",   // Default SpringDoc path
-                        "/api-docs/**",      // Your custom path
-                        "/swagger-ui.html",
+                        // Swagger/OpenAPI paths
+                        "/v3/api-docs/**",
+                        "/v3/api-docs.yaml",
                         "/swagger-ui/**",
+                        "/swagger-ui.html",
                         "/swagger-resources/**",
-                        "/webjars/**"
+                        "/webjars/**",
+                        "/api-docs/**"
                 ).permitAll()
-                .requestMatchers("/accounts/register", "/accounts/login").permitAll()
-                .requestMatchers("/accounts/**").hasAnyRole("SuperAdmin", "Admin", "User")
+                // Public read-only endpoints for orchids and categories
+                .requestMatchers("GET", "/api/orchids/**").permitAll()
+                .requestMatchers("GET", "/api/categories/**").permitAll()
+
+                // Admin and Superadmin endpoints
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPERADMIN")
+
+                // User profile endpoints - authenticated users only
+                .requestMatchers("/accounts/profile").authenticated()
+
+                // Shopping cart endpoints - authenticated users only
+                .requestMatchers("/api/cart/**").authenticated()
+
+                // Order endpoints - authenticated users only
+                .requestMatchers("/api/orders/**").authenticated()
+
                 .anyRequest().authenticated()
                 .and()
                 .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .and()
+                .exceptionHandling()
+                .authenticationEntryPoint(authenticationEntryPoint());
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return new AuthenticationEntryPoint() {
+            @Override
+            public void commence(HttpServletRequest request, HttpServletResponse response,
+                                 AuthenticationException authException) throws IOException {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + authException.getMessage() + "\"}");
+            }
+        };
     }
 
     @Bean
@@ -66,9 +106,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

@@ -9,8 +9,9 @@ import com.example.orchidservice.dto.RegisterResponseDTO;
 import com.example.orchidservice.pojo.Account;
 import com.example.orchidservice.service.imp.IAccountService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -42,32 +43,40 @@ public class AccountController {
             .build());
     }
 
-    @PreAuthorize("hasRole('SuperAdmin') or hasRole('Admin') or (hasRole('User') and #id == authentication.principal.accountId)")
-    @GetMapping("/profile/{id}")
-    public ResponseEntity<ApiResponse<AccountDTO>> getAccount(@PathVariable Integer id) {
-        Optional<Account> accountOpt = accountService.getAccountById(id);
+    @GetMapping("/profile")
+    public ResponseEntity<ApiResponse<AccountDTO>> getCurrentUserProfile(@AuthenticationPrincipal Account currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.<AccountDTO>builder()
+                            .code(1001)
+                            .message("Unauthorized access")
+                            .build());
+        }
+
+        // Refresh account data from database to ensure we have the latest information
+        Optional<Account> accountOpt = accountService.getAccountById(currentUser.getAccountId());
         if (accountOpt.isEmpty()) {
             return ResponseEntity.badRequest()
-                .body(ApiResponse.<AccountDTO>builder()
-                    .code(1004)
-                    .message("Account not found")
-                    .build());
+                    .body(ApiResponse.<AccountDTO>builder()
+                            .code(1004)
+                            .message("Account not found")
+                            .build());
         }
 
         Account account = accountOpt.get();
         AccountDTO accountDTO = AccountDTO.builder()
-            .accountId(account.getAccountId())
-            .accountName(account.getAccountName())
-            .email(account.getEmail())
-            .roleId(account.getRole().getRoleId())
-            .roleName(account.getRole().getRoleName())
-            .build();
+                .accountId(account.getAccountId())
+                .accountName(account.getAccountName())
+                .email(account.getEmail())
+                .roleId(account.getRole().getRoleId())
+                .roleName(account.getRole().getRoleName())
+                .build();
 
         return ResponseEntity.ok(ApiResponse.<AccountDTO>builder()
-            .code(1000)
-            .message("Account retrieved successfully")
-            .result(accountDTO)
-            .build());
+                .code(1000)
+                .message("Profile retrieved successfully")
+                .result(accountDTO)
+                .build());
     }
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader("Authorization") String authHeader) {

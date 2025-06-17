@@ -32,4 +32,14 @@ public class Account {
 
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
+
+    @Override
+    public String toString() {
+        return "Account{" +
+                "accountId=" + accountId +
+                ", accountName='" + accountName + '\'' +
+                ", email='" + email + '\'' +
+                // Don't include role in toString to avoid lazy loading
+                '}';
+    }
 }
